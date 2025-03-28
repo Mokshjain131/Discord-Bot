@@ -1,5 +1,8 @@
 const { Client, GatewayIntentBits, Events } = require('discord.js');
 require('dotenv').config();
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
 const client = new Client({
     intents: [
@@ -11,12 +14,6 @@ const client = new Client({
 });
 
 async function generate() {
-    const response = await fetch('https://api.chucknorris.io/jokes/random');
-    const data = await response.json();
-    return data.value;
-}
-
-async function chuck() {
     const response = await fetch('https://api.chucknorris.io/jokes/random');
     const data = await response.json();
     return data.value;
@@ -78,11 +75,13 @@ client.on(Events.MessageCreate, async (message) => {
     }
     else if (message.content === '!chuck') {
         try {
-            message = await chuck();
-            await message.channel.send(message);
+            const response = await fetch('https://api.chucknorris.io/jokes/random');
+            const data = await response.json();
+            message.channel.send(data.value);
         }
         catch (error) {
-            console.error(error);
+            console.error('Error fetching Chuck Norris joke:', error);
+            message.channel.send('Failed to fetch a Chuck Norris joke.');
         }
     }
     else if (message.content === '!generate') {

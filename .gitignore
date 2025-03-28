@@ -4,6 +4,7 @@ node_modules/
 # Environment variables file
 .env
 notes.txt
+test.js
 
 # Logs
 *.log

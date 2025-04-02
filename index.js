@@ -39,7 +39,7 @@ async function generate(query) {
         return message;
     }
     catch (error) {
-        console.error("Error generating content:", error);
+        return `Error generating content: ${error}`;
     }
 }
 

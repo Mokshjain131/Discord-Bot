@@ -1,10 +1,9 @@
-const { Client, GatewayIntentBits, Events } = require('discord.js');
+const { Client, GatewayIntentBits, Events, AttachmentBuilder } = require('discord.js');
 require('dotenv').config();
 const fs = require('fs');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenAI } = require('@google/genai');
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp-image-generation" });
+const ai = new GoogleGenAI(process.env.GOOGLE_API_KEY);
 
 const client = new Client({
     intents: [
@@ -17,29 +16,39 @@ const client = new Client({
 
 async function generate(query) {
     try {
-        const response = await model.generateContent({
-            contents: [query],
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.0-flash-exp-image-generation',
+            contents: query,
             config: {
                 responseModalities: ['Text', 'Image']
             },
         });
         
+        const result = { text: null, image: null };
+        
+        // Check if response has candidates
+        if (!response.candidates || !response.candidates[0]) {
+            return 'Error: No response from API';
+        }
+        
         for (const part of response.candidates[0].content.parts) {
             if (part.text) {
-                message.text = part.text;
+                result.text = part.text;
             }
             else if (part.inlineData) {
                 const imageData = part.inlineData.data;
                 const buffer = Buffer.from(imageData, 'base64');
-                fs.writeFileSync('image.png', buffer);
-                message.image = 'image.png';
+                const filename = `generated_${Date.now()}.png`;
+                fs.writeFileSync(filename, buffer);
+                result.image = filename;
             }
         }
 
-        return message;
+        return result;
     }
     catch (error) {
-        return `Error generating content: ${error}`;
+        console.error('Generate function error:', error);
+        return `Error generating content: ${error.message}`;
     }
 }
 
@@ -118,18 +127,50 @@ client.on(Events.MessageCreate, async (message) => {
     }
     else if (command === '!generate') {
         if (!query) {
-            await message.channel.send("Please provide a prompt for generation!");
+            await message.channel.send("Please provide a prompt for image generation!");
+            return;
         }
-        else {
-            try {
-                message = await generate(query);
-                const attachment = new MessageAttachment(message.image);
-                await message.channel.send({files: [attachment], content: [message.text]});
+        
+        await message.channel.send("🎨 Generating image... This may take a moment!");
+        
+        try {
+            const result = await generate(query);
+            
+            if (typeof result === 'string') {
+                // Error case
+                await message.channel.send(result);
+            } else {
+                // Success case
+                const messageOptions = {};
+                
+                if (result.text) {
+                    messageOptions.content = result.text;
+                }
+                
+                if (result.image) {
+                    const attachment = new AttachmentBuilder(result.image);
+                    messageOptions.files = [attachment];
+                    
+                    // Clean up the temporary file after sending
+                    setTimeout(() => {
+                        try {
+                            fs.unlinkSync(result.image);
+                        } catch (err) {
+                            console.log('Could not delete temp file:', err.message);
+                        }
+                    }, 5000);
+                }
+                
+                if (messageOptions.content || messageOptions.files) {
+                    await message.channel.send(messageOptions);
+                } else {
+                    await message.channel.send('No content generated');
+                }
             }
-            catch (error) {
-                console.error(error);
-                message.channel.send('Failed to generate content.');
-            }
+        }
+        catch (error) {
+            console.error(error);
+            await message.channel.send('Failed to generate content.');
         }
     }
 });

@@ -5,7 +5,8 @@
     "main": "index.js",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
-        "start": "node index.js"
+        "start": "node index.js",
+        "stable": "node stability.js"
     },
     "keywords": [],
     "author": "",
@@ -14,6 +15,7 @@
         "@google/genai": "^0.7.0",
         "discord.js": "^14.15.3",
         "dotenv": "^16.4.5",
-        "google": "^2.1.0"
+        "google": "^2.1.0",
+        "openai": "^5.1.0"
     }
 }
